@@ -21,7 +21,7 @@ public class Terrain : MonoBehaviour
     public static Terrain instance;
     public GameObject AGENT_TEMPLATE;
     public GameObject TILE_TEMPLATE;
-    public const int NUM_AGENTS = 250;
+    public const int NUM_STARTING_AGENTS = 250;
     public const int HEIGHT = 50;
     public const int WIDTH = 50;
     public const float MAX_SUGAR = 4;
@@ -31,7 +31,7 @@ public class Terrain : MonoBehaviour
 
     private TileInfo[,] map;
     public int agentsMoved;
-    private Agent[] agents;
+    private List<Agent> agents;
     private float timer;
 
     /* Statistics */
@@ -66,13 +66,14 @@ public class Terrain : MonoBehaviour
         initialiseMap();
 
         /* Create agents */
-        agents = new Agent[NUM_AGENTS];
-        for (int i=0; i<NUM_AGENTS; ++i)
+        agents = new List<Agent>();
+        for (int i=0; i<NUM_STARTING_AGENTS; ++i)
         {
             //Instantiate(AGENT_TEMPLATE);
-            agents[i] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
+            //agents[i] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
+            agents.Add(Instantiate(AGENT_TEMPLATE).GetComponent<Agent>());
         }
-        capacity = NUM_AGENTS;
+        capacity = NUM_STARTING_AGENTS;
         agentsMoved = 0;
         time_count = 0;
     }
@@ -91,15 +92,23 @@ public class Terrain : MonoBehaviour
         }
         initialiseMap();
 
-        for (int i=0; i<NUM_AGENTS; ++i)
+        //Agent temp;
+        for (int i=0; i<agents.Count; ++i) /* This function might crash */ // ====================================
         {
-            if (agents[i] != null)
-            {
-                Destroy(agents[i].gameObject);
-            }
-            agents[i] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
+            //temp = agents[0];
+            //agents.RemoveAt(0);
+            //Destroy(temp.gameObject);
+
+            Destroy(agents[i].gameObject);
         }
-        capacity = NUM_AGENTS;
+        agents.Clear();
+
+
+        for (int i=0; i<NUM_STARTING_AGENTS; ++i)
+        {
+            agents.Add(Instantiate(AGENT_TEMPLATE).GetComponent<Agent>());
+        }
+        capacity = NUM_STARTING_AGENTS;
         agentsMoved = 0;
         time_count = 0;
     }
@@ -137,7 +146,7 @@ public class Terrain : MonoBehaviour
 
             //TODO randomise order of agents list!!
             randomizeAgentOrder();
-            for (int i = 0; i < NUM_AGENTS; ++i)
+            for (int i = 0; i < getNumAgents(); ++i)
             {
                 if (agents[i] != null)
                 {
@@ -159,7 +168,7 @@ public class Terrain : MonoBehaviour
                         {
                             /* Just removing agents if dead */
                             Destroy(agents[i].gameObject);
-                            agents[i] = null;
+                            agents.RemoveAt(i);
                             --capacity;
                         }
                     }
@@ -191,9 +200,10 @@ public class Terrain : MonoBehaviour
     {
         Agent temp;
         int randomIndex;
-        for (int i=0; i<NUM_AGENTS; ++i)
+        int num_agents = getNumAgents();
+        for (int i=0; i< num_agents; ++i)
         {
-            randomIndex = Random.Range(0, NUM_AGENTS - 1);
+            randomIndex = Random.Range(0, num_agents - 1);
             if (randomIndex != i)
             {
                 temp = agents[i];
@@ -207,6 +217,12 @@ public class Terrain : MonoBehaviour
     {
         Destroy(agents[agentIndex].gameObject);
         agents[agentIndex] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
+    }
+
+    public int getNumAgents()
+    {
+        if (agents == null) return 0;
+        return agents.Count;
     }
 
     /**
@@ -281,7 +297,8 @@ public class Terrain : MonoBehaviour
 
     public Vector2 getRandomEmptyMapPosition()
     {
-        if (NUM_AGENTS >= HEIGHT * WIDTH) return new Vector2(-1, -1); // (Should probs throw error), also currently unreachable but let's play it safe
+        /* Checks if map is full to avoid infinite loop of trying to find empty space on full map */
+        if (getNumAgents() >= HEIGHT * WIDTH) return new Vector2(-1, -1); // (Should probs throw error), also currently unreachable but let's play it safe
         Vector2 pos = getRandomMapPosition();
         while (map[(int)(pos.x),(int)(pos.y)].isOccupied())
         {
