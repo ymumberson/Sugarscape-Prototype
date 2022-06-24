@@ -32,6 +32,11 @@ public class TileInfo : MonoBehaviour
         return this.agent != null;
     }
 
+    public Agent getAgent()
+    {
+        return agent;
+    }
+
     public void setMaxSugar(float MAX_SUGAR)
     {
         this.MAX_SUGAR = MAX_SUGAR;
@@ -74,17 +79,20 @@ public class TileInfo : MonoBehaviour
 
     public void updateColor()
     {
-        if (Terrain.instance.display_pollution)
+        switch (Terrain.instance.current_display)
         {
-            sprite_renderer.color = Terrain.instance.getPollutionColor(pollution);
-        }
-        else if (Terrain.instance.display_sugar_pollution_ratio)
-        {
-            sprite_renderer.color = Terrain.instance.getPollutionToSugarColor(pollution, sugar_level);
-        }
-        else
-        {
-            sprite_renderer.color = Terrain.instance.getColor(sugar_level);
+            case Terrain.DisplayOptions.Sugar_level:
+                sprite_renderer.color = Terrain.instance.getColor(sugar_level);
+                break;
+            case Terrain.DisplayOptions.Pollution_level:
+                sprite_renderer.color = Terrain.instance.getPollutionColor(pollution);
+                break;
+            case Terrain.DisplayOptions.Sugar_to_pollution_ratio:
+                sprite_renderer.color = Terrain.instance.getPollutionToSugarColor(pollution, sugar_level);
+                break;
+            default:
+                sprite_renderer.color = Terrain.instance.getColor(sugar_level);
+                break;
         }
     }
 

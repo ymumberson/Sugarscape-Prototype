@@ -8,15 +8,24 @@ public class Terrain : MonoBehaviour
     {
         G1,G2,G3
     }
+    public enum DisplayOptions
+    {
+        Sugar_level, Pollution_level, Sugar_to_pollution_ratio
+    }
+    public enum OffspringRules
+    {
+        Disabled, Random_replacement, Genetic_offspring
+    }
 
     /* Settings */
     public GrowbackRules growback_rules = GrowbackRules.G1;
     public bool lifespan_enabled = true;
-    public bool offspring_enabled = true;
+    public OffspringRules offspring_rules = OffspringRules.Disabled;
     public bool pollution_enabled = true;
     public bool pollution_dispersion_enabled = true;
-    public bool display_pollution = false;
-    public bool display_sugar_pollution_ratio = false;
+    public DisplayOptions current_display = DisplayOptions.Sugar_level;
+    //public bool display_pollution = false;
+    //public bool display_sugar_pollution_ratio = false;
 
     public static Terrain instance;
     public GameObject AGENT_TEMPLATE;
@@ -30,7 +39,6 @@ public class Terrain : MonoBehaviour
     public float MAX_POLLUTION_DISPLAYED = 50f;
 
     private TileInfo[,] map;
-    public int agentsMoved;
     private List<Agent> agents;
     private float timer;
 
@@ -60,7 +68,6 @@ public class Terrain : MonoBehaviour
                 GameObject new_tile = Instantiate(TILE_TEMPLATE);
                 new_tile.transform.position = new Vector2(i,j);
                 map[i, j] = new_tile.GetComponent<TileInfo>();
-                //map[i,j] = new TileInfo(MAX_SUGAR,new_tile.GetComponent<SpriteRenderer>());
             }
         }
         initialiseMap();
@@ -69,12 +76,9 @@ public class Terrain : MonoBehaviour
         agents = new List<Agent>();
         for (int i=0; i<NUM_STARTING_AGENTS; ++i)
         {
-            //Instantiate(AGENT_TEMPLATE);
-            //agents[i] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
             agents.Add(Instantiate(AGENT_TEMPLATE).GetComponent<Agent>());
         }
         capacity = NUM_STARTING_AGENTS;
-        agentsMoved = 0;
         time_count = 0;
     }
 
@@ -95,6 +99,7 @@ public class Terrain : MonoBehaviour
         //Agent temp;
         for (int i=0; i<agents.Count; ++i) /* This function might crash */ // ====================================
         {
+            /* If crashes here then try this code? */
             //temp = agents[0];
             //agents.RemoveAt(0);
             //Destroy(temp.gameObject);
@@ -109,7 +114,6 @@ public class Terrain : MonoBehaviour
             agents.Add(Instantiate(AGENT_TEMPLATE).GetComponent<Agent>());
         }
         capacity = NUM_STARTING_AGENTS;
-        agentsMoved = 0;
         time_count = 0;
     }
 
@@ -129,13 +133,6 @@ public class Terrain : MonoBehaviour
 
     private void FixedUpdate()
     {
-        /* Only regenerate map after all agents have taken their turn *//*
-        if (agentsMoved >= NUM_AGENTS)
-        {
-            regenerateMap();
-            agentsMoved = 0;
-        }*/
-
         timer += Time.fixedDeltaTime;
         if (timer >= TIME_INTERVAL)
         {
@@ -143,6 +140,7 @@ public class Terrain : MonoBehaviour
             avg_metabolism = 0;
             avg_vision = 0;
             total_wealth = 0;
+            capacity = getNumAgents();
 
             //TODO randomise order of agents list!!
             randomizeAgentOrder();
@@ -159,12 +157,12 @@ public class Terrain : MonoBehaviour
                     }
                     else
                     {
-                        if (offspring_enabled)
+                        if (offspring_rules == OffspringRules.Random_replacement)
                         {
                             /* Replace agents if dead */
                             replaceAgentWithNewRandomAgent(i);
                         }
-                        else
+                        else /* The other rules just remove dead agents */
                         {
                             /* Just removing agents if dead */
                             Destroy(agents[i].gameObject);
@@ -186,6 +184,9 @@ public class Terrain : MonoBehaviour
                     break;
                 case GrowbackRules.G3:
                     regenerateMapSeasonal();
+                    break;
+                default:
+                    regenerateMapToMax();
                     break;
             }
 
@@ -215,6 +216,7 @@ public class Terrain : MonoBehaviour
 
     private void replaceAgentWithNewRandomAgent(int agentIndex)
     {
+        
         Destroy(agents[agentIndex].gameObject);
         agents[agentIndex] = Instantiate(AGENT_TEMPLATE).GetComponent<Agent>();
     }
@@ -223,6 +225,11 @@ public class Terrain : MonoBehaviour
     {
         if (agents == null) return 0;
         return agents.Count;
+    }
+
+    public void addAgent(Agent a)
+    {
+        agents.Add(a);
     }
 
     /**
@@ -380,9 +387,17 @@ public class Terrain : MonoBehaviour
         return getTileInfo(pos).agent;
     }
 
-    public void setAgent(Vector2 pos, Agent a)
+    public bool setAgent(Vector2 pos, Agent a)
     {
-        getTileInfo(pos).agent = a;
+        TileInfo tile = getTileInfo(pos);
+        if (tile.isOccupied()) return false;
+        tile.agent = a;
+        return true;
+    }
+
+    public void removeAgent(Vector2 pos)
+    {
+        getTileInfo(pos).agent = null;
     }
 
     public Color getColor(float sugar_level)
@@ -423,11 +438,40 @@ public class Terrain : MonoBehaviour
                 flux += getTileInfo(i-1, j).getPollution();
                 flux += getTileInfo(i, j+1).getPollution();
                 flux += getTileInfo(i, j-1).getPollution();
-                flux += getTileInfo(i, j).getPollution();
-                flux /= 5f;
-                //flux /= 4;
+                //flux += getTileInfo(i, j).getPollution();
+                //flux /= 5f;
+                flux /= 4;
                 getTileInfo(i, j).setPollution(flux);
             }
         }
+    }
+
+    public List<Agent> getNeighbouringAgents(Vector2 pos) /* Gets Von Neumann Neighbours */
+    {
+        List<Agent> neighbours = new List<Agent>();
+        Agent temp;
+
+        temp = getTileInfo(pos.x - 1, pos.y).getAgent();
+        if (temp != null) neighbours.Add(temp);
+
+        temp = getTileInfo(pos.x + 1, pos.y).getAgent();
+        if (temp != null) neighbours.Add(temp);
+
+        temp = getTileInfo(pos.x, pos.y - 1).getAgent();
+        if (temp != null) neighbours.Add(temp);
+
+        temp = getTileInfo(pos.x, pos.y + 1).getAgent();
+        if (temp != null) neighbours.Add(temp);
+
+        return neighbours;
+    }
+
+    public Vector2 getEmptyNeighbouringTile(Vector2 pos)
+    {
+        if (!getTileInfo(pos.x - 1, pos.y).isOccupied()) return new Vector2(pos.x - 1, pos.y);
+        if (!getTileInfo(pos.x + 1, pos.y).isOccupied()) return new Vector2(pos.x + 1, pos.y);
+        if (!getTileInfo(pos.x, pos.y - 1).isOccupied()) return new Vector2(pos.x, pos.y - 1);
+        if (!getTileInfo(pos.x, pos.y + 1).isOccupied()) return new Vector2(pos.x, pos.y + 1);
+        return new Vector2(-1,-1);
     }
 }

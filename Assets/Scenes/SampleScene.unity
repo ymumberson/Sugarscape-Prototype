@@ -370,17 +370,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   growback_rules: 0
-  lifespan_enabled: 0
-  offspring_enabled: 0
+  lifespan_enabled: 1
+  offspring_rules: 2
   pollution_enabled: 0
   pollution_dispersion_enabled: 0
-  display_pollution: 0
-  display_sugar_pollution_ratio: 0
+  current_display: 0
   AGENT_TEMPLATE: {fileID: 5018756405826311313, guid: 71df814d1318eaa42a521e9185e8f69f, type: 3}
   TILE_TEMPLATE: {fileID: 5565839179423602630, guid: f38c6d8eb0bd50842a251da1a119aded, type: 3}
   TIME_INTERVAL: 0.1
   MAX_POLLUTION_DISPLAYED: 50
-  agentsMoved: 0
   capacity: 0
   avg_vision: 0
   avg_metabolism: 0
