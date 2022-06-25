@@ -139,79 +139,156 @@ public class Agent : MonoBehaviour
         }
     }
 
+    private void searchForBestPosition(ref Vector2 best_pos, ref float best_val, ref int dist_to_best, int x_offset, int y_offset)
+    {
+        Vector2 pos;
+        float current_val;
+        for (int i=1; i<= vision; ++i)
+        {
+            pos = new Vector2(position.x + x_offset * i, position.y + y_offset*i);
+            if (Terrain.instance.pollution_enabled)
+            {
+                current_val = Terrain.instance.getSugarLevel(pos) / (1f + Terrain.instance.getPollution(pos));
+            }
+            else
+            {
+                current_val = Terrain.instance.getSugarLevel(pos);
+            }
+            if (current_val > best_val && !Terrain.instance.isOccupied(pos))
+            {
+                best_val = current_val;
+                best_pos = pos;
+                dist_to_best = Mathf.Abs(i);
+            }
+            else if (current_val == best_val
+              && Mathf.Abs(i) < dist_to_best && !Terrain.instance.isOccupied(pos))
+            {
+                best_pos = pos;
+                dist_to_best = Mathf.Abs(i);
+            }
+        }
+    }
+
+    private void searchNorthForBestPosition(ref Vector2 best_pos, ref float best_val, ref int dist_to_best)
+    {
+        searchForBestPosition(ref best_pos, ref best_val, ref dist_to_best, 0, 1);
+    }
+
+    private void searchEastForBestPosition(ref Vector2 best_pos, ref float best_val, ref int dist_to_best)
+    {
+        searchForBestPosition(ref best_pos, ref best_val, ref dist_to_best, 1, 0);
+    }
+
+    private void searchSouthForBestPosition(ref Vector2 best_pos, ref float best_val, ref int dist_to_best)
+    {
+        searchForBestPosition(ref best_pos, ref best_val, ref dist_to_best, 0, -1);
+    }
+
+    private void searchWestForBestPosition(ref Vector2 best_pos, ref float best_val, ref int dist_to_best)
+    {
+        searchForBestPosition(ref best_pos, ref best_val, ref dist_to_best, -1, 0);
+    }
+
     private void move()
     {
-        float current_tile_sugar_level = Terrain.instance.getSugarLevel(position);
-        float highest_sugar_level = -1;
         Vector2 pos = position;
-        Vector2 temp_pos;
-        float temp_sugar_level;
-        int distance_to_tile = 0;
+        float best_val = -1f;
+        //if (Terrain.instance.pollution_enabled)
+        //{
+        //    best_val = Terrain.instance.getSugarLevel(pos) / (1f + Terrain.instance.getPollution(pos));
+        //} 
+        //else
+        //{
+        //    best_val = Terrain.instance.getSugarLevel(pos);
+        //}
+        int distance_to_best = 0;
 
-        //TODO Randomize the order directions are checked in!!!!
-        /* Check for movement in x direction */
-        for (int i=-vision; i<=vision; ++i)
+        List<System.Action> method_ls = new List<System.Action>();
+        method_ls.Add(() => searchNorthForBestPosition(ref pos, ref best_val, ref distance_to_best));
+        method_ls.Add(() => searchEastForBestPosition(ref pos, ref best_val, ref distance_to_best));
+        method_ls.Add(() => searchSouthForBestPosition(ref pos, ref best_val, ref distance_to_best));
+        method_ls.Add(() => searchWestForBestPosition(ref pos, ref best_val, ref distance_to_best));
+        shuffleList<System.Action>(method_ls);
+        foreach (System.Action a in method_ls)
         {
-            temp_pos = new Vector2(position.x + i, position.y);
-            //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-            if (Terrain.instance.pollution_enabled)
-            {
-                temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
-            }
-            else
-            {
-                temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-            }
-            if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
-            {
-                highest_sugar_level = temp_sugar_level;
-                pos = temp_pos;
-                distance_to_tile = Mathf.Abs(i);
-            } else if (temp_sugar_level == highest_sugar_level 
-                && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
-            {
-                pos = temp_pos;
-                distance_to_tile = Mathf.Abs(i);
-            }
+            a();
         }
-        /* Check for movement in y direction */
-        for (int i = -vision; i <= vision; ++i)
-        {
-            temp_pos = new Vector2(position.x, position.y + i);
-            //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-            if (Terrain.instance.pollution_enabled)
-            {
-                temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
-            }
-            else
-            {
-                temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-            }
-            if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
-            {
-                highest_sugar_level = temp_sugar_level;
-                pos = temp_pos;
-                distance_to_tile = Mathf.Abs(i);
-            }
-            else if (temp_sugar_level == highest_sugar_level
-              && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
-            {
-                pos = temp_pos;
-                distance_to_tile = Mathf.Abs(i);
-            }
-        }
-
-        /* Check a better tile was found than the current tile */
-        if (highest_sugar_level > -1)
-        {
-            //Terrain.instance.setAgent(position, null);
-            //Terrain.instance.setAgent(pos, this);
-            //this.position = Terrain.instance.getBoundedPosition(pos); //Stops assignment outside of the map
-            setPosition(pos);
-        }
-
-        //transform.position = position;
+        setPosition(pos);
     }
+
+    //private void move()
+    //{
+    //    float current_tile_sugar_level = Terrain.instance.getSugarLevel(position);
+    //    float highest_sugar_level = -1;
+    //    Vector2 pos = position;
+    //    Vector2 temp_pos;
+    //    float temp_sugar_level;
+    //    int distance_to_tile = 0;
+
+    //    //TODO Randomize the order directions are checked in!!!!
+    //    /* Check for movement in x direction */
+    //    for (int i=-vision; i<=vision; ++i)
+    //    {
+    //        temp_pos = new Vector2(position.x + i, position.y);
+    //        //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
+    //        if (Terrain.instance.pollution_enabled)
+    //        {
+    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
+    //        }
+    //        else
+    //        {
+    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
+    //        }
+    //        if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
+    //        {
+    //            highest_sugar_level = temp_sugar_level;
+    //            pos = temp_pos;
+    //            distance_to_tile = Mathf.Abs(i);
+    //        } else if (temp_sugar_level == highest_sugar_level 
+    //            && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
+    //        {
+    //            pos = temp_pos;
+    //            distance_to_tile = Mathf.Abs(i);
+    //        }
+    //    }
+    //    /* Check for movement in y direction */
+    //    for (int i = -vision; i <= vision; ++i)
+    //    {
+    //        temp_pos = new Vector2(position.x, position.y + i);
+    //        //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
+    //        if (Terrain.instance.pollution_enabled)
+    //        {
+    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
+    //        }
+    //        else
+    //        {
+    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
+    //        }
+    //        if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
+    //        {
+    //            highest_sugar_level = temp_sugar_level;
+    //            pos = temp_pos;
+    //            distance_to_tile = Mathf.Abs(i);
+    //        }
+    //        else if (temp_sugar_level == highest_sugar_level
+    //          && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
+    //        {
+    //            pos = temp_pos;
+    //            distance_to_tile = Mathf.Abs(i);
+    //        }
+    //    }
+
+    //    /* Check a better tile was found than the current tile */
+    //    if (highest_sugar_level > -1)
+    //    {
+    //        //Terrain.instance.setAgent(position, null);
+    //        //Terrain.instance.setAgent(pos, this);
+    //        //this.position = Terrain.instance.getBoundedPosition(pos); //Stops assignment outside of the map
+    //        setPosition(pos);
+    //    }
+
+    //    //transform.position = position;
+    //}
 
     public void collectSugar()
     {
@@ -225,13 +302,26 @@ public class Agent : MonoBehaviour
         if (sugar <= 0) die();
     }
 
+    private void shuffleList<T>(List<T> ls)
+    {
+        T temp;
+        int randomIndex;
+        for (int i=0; i<ls.Count; ++i)
+        {
+            temp = ls[i];
+            randomIndex = Random.Range(0, ls.Count);
+            ls[i] = ls[randomIndex];
+            ls[randomIndex] = temp;
+        }
+    }
+
     private void sexRuleS()
     {
         List<Agent> neighbours = Terrain.instance.getNeighbouringAgents(position);
         if (neighbours.Count == 0) return; /* Fails if no neighbours */
-        //Agent selected_neighbour = neighbours[Random.Range(0, neighbours.Count - 1)]; /* Select random neighbour */
-        
-        foreach (Agent neighbour in neighbours) //TODO Randomize the order of selection !!!!!!!
+
+        shuffleList<Agent>(neighbours); /* Shuffles the order of the neighbours list */
+        foreach (Agent neighbour in neighbours)
         {
             sexRuleS(neighbour);
         }
@@ -264,23 +354,18 @@ public class Agent : MonoBehaviour
 
         /* Set location */
         if (Terrain.instance.setAgent(location, child) == false) Destroy(child.gameObject); /* if tile was occupied then destroy child (ie something went wrong)*/
-        //child.position = location;
         child.setPosition(location);
 
         /* Set genes to inherit from parents (50% chance per gene of inheriting from either parent)*/
         child.setMetabolism((Random.value > 0.5f) ? this.metabolism : other_parent.metabolism);
         child.setVision((Random.value > 0.5f) ? this.vision : other_parent.vision);
 
-        int lsSize = Terrain.instance.getNumAgents();
         Terrain.instance.addAgent(child);
-        int lsSize2 = Terrain.instance.getNumAgents();
-        Debug.Log("Child created!!! " + lsSize + " -> " + lsSize2);
     }
 
     private void die()
     {
         Terrain.instance.removeAgent(position);
-        //Destroy(this.gameObject);
         isAlive = false;
     }
 }

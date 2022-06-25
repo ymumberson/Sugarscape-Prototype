@@ -370,7 +370,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   growback_rules: 0
-  lifespan_enabled: 1
+  lifespan_enabled: 0
   offspring_rules: 2
   pollution_enabled: 0
   pollution_dispersion_enabled: 0
