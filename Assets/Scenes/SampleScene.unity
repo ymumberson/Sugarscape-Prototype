@@ -373,6 +373,7 @@ MonoBehaviour:
   lifespan_enabled: 1
   offspring_rules: 2
   inheritance_enabled: 1
+  culture_enabled: 1
   pollution_enabled: 0
   pollution_dispersion_enabled: 0
   current_display: 0

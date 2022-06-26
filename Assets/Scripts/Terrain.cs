@@ -22,11 +22,10 @@ public class Terrain : MonoBehaviour
     public bool lifespan_enabled = true;
     public OffspringRules offspring_rules = OffspringRules.Disabled;
     public bool inheritance_enabled = true;
+    public bool culture_enabled = true;
     public bool pollution_enabled = true;
     public bool pollution_dispersion_enabled = true;
     public DisplayOptions current_display = DisplayOptions.Sugar_level;
-    //public bool display_pollution = false;
-    //public bool display_sugar_pollution_ratio = false;
 
     public static Terrain instance;
     public GameObject AGENT_TEMPLATE;

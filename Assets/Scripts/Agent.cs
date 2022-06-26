@@ -27,6 +27,7 @@ public class Agent : MonoBehaviour
     public const int MALE_MAX_CHILDBEARING_AGE_UPPER = 60;
     public const int FEMALE_MIN_CHILDBEARING_AGE_UPPER = 15;
     public const int FEMALE_MAX_CHILDBEARING_AGE_UPPER = 50;
+    public const int NUM_TAGS = 11;
 
     [SerializeField] private float initial_sugar_endowment;
     [SerializeField] private float metabolism;
@@ -38,8 +39,10 @@ public class Agent : MonoBehaviour
     [SerializeField] private int time_alive; /* ie Age */
     [SerializeField] private int min_childbearing_age;
     [SerializeField] private int max_childbearing_age;
+    [SerializeField] private int[] tags;
     private Agent[] parents;
     public bool isAlive = true;
+    private SpriteRenderer sprite_renderer;
 
     /*
      * Initialises metabolision and vision to random values between static bounds.
@@ -68,6 +71,41 @@ public class Agent : MonoBehaviour
                 break;
         }
         parents = new Agent[2]; /* Mother and father */
+        tags = new int[NUM_TAGS];
+        initialiseTags();
+        sprite_renderer = GetComponent<SpriteRenderer>();
+    }
+
+    private void initialiseTags()
+    {
+        for (int i=0; i<NUM_TAGS; ++i)
+        {
+            tags[i] = (Random.value > 0.5f) ? 1 : 0;
+        }
+    }
+
+    public int getTag(int index)
+    {
+        //if (index >= NUM_TAGS || index < 0) return - 1; /* out of bounds */ (A crash might be easier for debugging)
+        return tags[index];
+    }
+
+    public void toggleTag(int index)
+    {
+        if (index >= NUM_TAGS || index < 0) return; /* out of bounds */
+        if (tags[index] == 0)
+        {
+            tags[index] = 1;
+        }
+        else
+        {
+            tags[index] = 0;
+        }
+    }
+
+    public void setTags(int[] tags)
+    {
+        this.tags = tags;
     }
 
     public void setPosition(Vector2 pos)
@@ -161,6 +199,12 @@ public class Agent : MonoBehaviour
         {
             sexRuleS();
         } 
+
+        if (Terrain.instance.culture_enabled)
+        {
+            spreadCultureToNeighbours();
+            updateCultureColour();
+        }
 
         ++time_alive;
         if (Terrain.instance.lifespan_enabled && time_alive >= LIFESPAN) /* Die of old age */
@@ -321,7 +365,34 @@ public class Agent : MonoBehaviour
         child.setMetabolism((Random.value > 0.5f) ? this.metabolism : other_parent.metabolism);
         child.setVision((Random.value > 0.5f) ? this.vision : other_parent.vision);
 
+        /* Sets tags to inherit from parents (Same if parents agree, 50% chance if disagree) */
+        int[] child_tags = new int[NUM_TAGS];
+        for (int i=0; i<NUM_TAGS; ++i)
+        {
+            if (tags[i] == other_parent.tags[i])
+            {
+                child_tags[i] = tags[i];
+            }
+            else
+            {
+                child_tags[i] = (Random.value > 0.5f) ? tags[i] : other_parent.tags[i];
+            }
+        }
+        child.setTags(child_tags);
+
         Terrain.instance.addAgent(child);
+    }
+
+    private void spreadCultureToNeighbours()
+    {
+        List<Agent> neighbours = Terrain.instance.getNeighbouringAgents(position);
+        if (neighbours.Count == 0) return; /* No neighbours so fails */
+        int random_index;
+        foreach (Agent a in neighbours)
+        {
+            random_index = Random.Range(0, NUM_TAGS - 1);
+            if (a.getTag(random_index) != this.tags[random_index]) a.toggleTag(random_index);
+        }
     }
 
     private void die()
@@ -342,6 +413,24 @@ public class Agent : MonoBehaviour
         foreach (Agent child in children)
         {
             child.incrementWealth(wealth_per_child);
+        }
+    }
+
+    public void updateCultureColour()
+    {
+        int sum = 0;
+        for (int i=0; i<NUM_TAGS; ++i)
+        {
+            sum += tags[i];
+        }
+
+        if (sum > NUM_TAGS / 2)
+        {
+            sprite_renderer.color = Color.red;
+        }
+        else
+        {
+            sprite_renderer.color = Color.blue;
         }
     }
 }
