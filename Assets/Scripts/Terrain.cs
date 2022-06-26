@@ -21,6 +21,7 @@ public class Terrain : MonoBehaviour
     public GrowbackRules growback_rules = GrowbackRules.G1;
     public bool lifespan_enabled = true;
     public OffspringRules offspring_rules = OffspringRules.Disabled;
+    public bool inheritance_enabled = true;
     public bool pollution_enabled = true;
     public bool pollution_dispersion_enabled = true;
     public DisplayOptions current_display = DisplayOptions.Sugar_level;
@@ -473,5 +474,18 @@ public class Terrain : MonoBehaviour
         if (!getTileInfo(pos.x, pos.y - 1).isOccupied()) return new Vector2(pos.x, pos.y - 1);
         if (!getTileInfo(pos.x, pos.y + 1).isOccupied()) return new Vector2(pos.x, pos.y + 1);
         return new Vector2(-1,-1);
+    }
+
+    public List<Agent> getChildren(Agent parent)
+    {
+        List<Agent> children = new List<Agent>();
+        for (int i=0; i<agents.Count; ++i)
+        {
+            if (agents[i].getParents()[0] == parent || agents[i].getParents()[0] == parent)
+            {
+                children.Add(agents[i]);
+            }
+        }
+        return children;
     }
 }

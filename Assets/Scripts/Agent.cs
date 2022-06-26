@@ -38,6 +38,7 @@ public class Agent : MonoBehaviour
     [SerializeField] private int time_alive; /* ie Age */
     [SerializeField] private int min_childbearing_age;
     [SerializeField] private int max_childbearing_age;
+    private Agent[] parents;
     public bool isAlive = true;
 
     /*
@@ -66,6 +67,7 @@ public class Agent : MonoBehaviour
                 max_childbearing_age = Random.Range(FEMALE_MAX_CHILDBEARING_AGE_LOWER, FEMALE_MAX_CHILDBEARING_AGE_UPPER);
                 break;
         }
+        parents = new Agent[2]; /* Mother and father */
     }
 
     public void setPosition(Vector2 pos)
@@ -112,6 +114,34 @@ public class Agent : MonoBehaviour
     public void decrementWealth(float amount)
     {
         sugar -= amount;
+    }
+
+    public void incrementWealth(float amount)
+    {
+        sugar += amount;
+        //Debug.Log("Inherited $" + amount + "!");
+    }
+
+    public Agent[] getParents()
+    {
+        return parents;
+    }
+
+    public void setParents(Agent[] parents)
+    {
+        this.parents = parents;
+    }
+
+    public void addParent(Agent parent)
+    {
+        if (parents[0] == null)
+        {
+            parents[0] = parent;
+        }
+        else
+        {
+            parents[1] = parent;
+        }
     }
 
     public bool isFertile() /* Return (has at least initial sugar endowment) && (is within fertile age range) */
@@ -192,8 +222,13 @@ public class Agent : MonoBehaviour
     private void move()
     {
         Vector2 pos = position;
-        float best_val = -1f;
-        //if (Terrain.instance.pollution_enabled)
+        int distance_to_best = 0;
+
+        /* We can either use a constant value of -1 or the actual value. If using the actual value then movement becomes very static
+         * because agents just stay on the best tile they can see. However with a constant value of -1 agents are forced to move which
+         * forces exploration at the cost of potentially losing the tile you're on */
+        float best_val = -1f; /* const val */
+        //if (Terrain.instance.pollution_enabled) /* Actual value of the tile the agent is on */
         //{
         //    best_val = Terrain.instance.getSugarLevel(pos) / (1f + Terrain.instance.getPollution(pos));
         //} 
@@ -201,7 +236,6 @@ public class Agent : MonoBehaviour
         //{
         //    best_val = Terrain.instance.getSugarLevel(pos);
         //}
-        int distance_to_best = 0;
 
         List<System.Action> method_ls = new List<System.Action>();
         method_ls.Add(() => searchNorthForBestPosition(ref pos, ref best_val, ref distance_to_best));
@@ -215,80 +249,6 @@ public class Agent : MonoBehaviour
         }
         setPosition(pos);
     }
-
-    //private void move()
-    //{
-    //    float current_tile_sugar_level = Terrain.instance.getSugarLevel(position);
-    //    float highest_sugar_level = -1;
-    //    Vector2 pos = position;
-    //    Vector2 temp_pos;
-    //    float temp_sugar_level;
-    //    int distance_to_tile = 0;
-
-    //    //TODO Randomize the order directions are checked in!!!!
-    //    /* Check for movement in x direction */
-    //    for (int i=-vision; i<=vision; ++i)
-    //    {
-    //        temp_pos = new Vector2(position.x + i, position.y);
-    //        //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-    //        if (Terrain.instance.pollution_enabled)
-    //        {
-    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
-    //        }
-    //        else
-    //        {
-    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-    //        }
-    //        if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
-    //        {
-    //            highest_sugar_level = temp_sugar_level;
-    //            pos = temp_pos;
-    //            distance_to_tile = Mathf.Abs(i);
-    //        } else if (temp_sugar_level == highest_sugar_level 
-    //            && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
-    //        {
-    //            pos = temp_pos;
-    //            distance_to_tile = Mathf.Abs(i);
-    //        }
-    //    }
-    //    /* Check for movement in y direction */
-    //    for (int i = -vision; i <= vision; ++i)
-    //    {
-    //        temp_pos = new Vector2(position.x, position.y + i);
-    //        //temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-    //        if (Terrain.instance.pollution_enabled)
-    //        {
-    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos) / (1f + Terrain.instance.getPollution(temp_pos));
-    //        }
-    //        else
-    //        {
-    //            temp_sugar_level = Terrain.instance.getSugarLevel(temp_pos);
-    //        }
-    //        if (temp_sugar_level > highest_sugar_level && !Terrain.instance.isOccupied(temp_pos))
-    //        {
-    //            highest_sugar_level = temp_sugar_level;
-    //            pos = temp_pos;
-    //            distance_to_tile = Mathf.Abs(i);
-    //        }
-    //        else if (temp_sugar_level == highest_sugar_level
-    //          && Mathf.Abs(i) < distance_to_tile && !Terrain.instance.isOccupied(temp_pos))
-    //        {
-    //            pos = temp_pos;
-    //            distance_to_tile = Mathf.Abs(i);
-    //        }
-    //    }
-
-    //    /* Check a better tile was found than the current tile */
-    //    if (highest_sugar_level > -1)
-    //    {
-    //        //Terrain.instance.setAgent(position, null);
-    //        //Terrain.instance.setAgent(pos, this);
-    //        //this.position = Terrain.instance.getBoundedPosition(pos); //Stops assignment outside of the map
-    //        setPosition(pos);
-    //    }
-
-    //    //transform.position = position;
-    //}
 
     public void collectSugar()
     {
@@ -351,6 +311,7 @@ public class Agent : MonoBehaviour
         /* Create child */
         Agent child = Instantiate(Terrain.instance.AGENT_TEMPLATE).GetComponent<Agent>();
         child.setInitialSugarEndowment(child_initial_sugar_endowment); /* Give initial sugar */
+        child.setParents(new Agent[]{ this, other_parent});
 
         /* Set location */
         if (Terrain.instance.setAgent(location, child) == false) Destroy(child.gameObject); /* if tile was occupied then destroy child (ie something went wrong)*/
@@ -365,7 +326,22 @@ public class Agent : MonoBehaviour
 
     private void die()
     {
+        if (Terrain.instance.inheritance_enabled)
+        {
+            divideInheritanceEquallyBetweenChildren();
+        }
         Terrain.instance.removeAgent(position);
         isAlive = false;
+    }
+
+    private void divideInheritanceEquallyBetweenChildren()
+    {
+        List<Agent> children = Terrain.instance.getChildren(this);
+        if (children.Count == 0) return; /* ie has no children so return */
+        float wealth_per_child = sugar / children.Count;
+        foreach (Agent child in children)
+        {
+            child.incrementWealth(wealth_per_child);
+        }
     }
 }
